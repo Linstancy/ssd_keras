@@ -96,3 +96,6 @@ ENV/
 
 # Custom files
 local
+*.h5
+.idea
+/datasets/

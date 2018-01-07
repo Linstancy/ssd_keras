@@ -15,14 +15,21 @@ from ssd_batch_generator import BatchGenerator
 img_height = 300 # Height of the input images
 img_width = 300 # Width of the input images
 img_channels = 3 # Number of color channels of the input images
-n_classes = 21 # Number of classes including the background class, e.g. 21 for the Pascal VOC datasets
-scales = [0.1, 0.2, 0.37, 0.54, 0.71, 0.88, 1.05] # The anchor box scaling factors used in the original SSD300 for the Pascal VOC datasets, the factors for the MS COCO dataset are smaller, namely [0.07, 0.15, 0.33, 0.51, 0.69, 0.87, 1.05]
+n_classes = 2 # Number of classes including the background class, e.g. 21 for the Pascal VOC datasets
+# scales = [0.1, 0.2, 0.37, 0.54, 0.71, 0.88, 1.05] # The anchor box scaling factors used in the original SSD300 for the Pascal VOC datasets, the factors for the MS COCO dataset are smaller, namely [0.07, 0.15, 0.33, 0.51, 0.69, 0.87, 1.05]
+# aspect_ratios = [[0.5, 1.0, 2.0],
+#                  [1.0/3.0, 0.5, 1.0, 2.0, 3.0],
+#                  [1.0/3.0, 0.5, 1.0, 2.0, 3.0],
+#                  [1.0/3.0, 0.5, 1.0, 2.0, 3.0],
+#                  [0.5, 1.0, 2.0],
+#                  [0.5, 1.0, 2.0]] # The anchor box aspect ratios used in the original SSD300
+scales = [0.1, 0.25, 0.50, 0.75, 0.9, 1., 1.05] # The anchor box scaling factors used in the original SSD300 for the Pascal VOC datasets, the factors for the MS COCO dataset are smaller, namely [0.07, 0.15, 0.33, 0.51, 0.69, 0.87, 1.05]
 aspect_ratios = [[0.5, 1.0, 2.0],
-                 [1.0/3.0, 0.5, 1.0, 2.0, 3.0],
-                 [1.0/3.0, 0.5, 1.0, 2.0, 3.0],
-                 [1.0/3.0, 0.5, 1.0, 2.0, 3.0],
                  [0.5, 1.0, 2.0],
-                 [0.5, 1.0, 2.0]] # The anchor box aspect ratios used in the original SSD300
+                 [1/30., 2/30., 3/30., 4/30., 5/30.],
+                 [1/30., 2/30., 3/30., 4/30., 5/30.],
+                 [1/30., 2/30., 3/30., 4/30., 5/30.],
+                 [1/30., 2/30., 3/30., 4/30., 5/30.]] # The anchor box aspect ratios used in the original SSD300
 two_boxes_for_ar1 = True
 limit_boxes = False # Whether or not you want to limit the anchor boxes to lie entirely within the image boundaries
 variances = [0.1, 0.1, 0.2, 0.2] # The variances by which the encoded target coordinates are scaled as in the original implementation
@@ -57,21 +64,21 @@ model, predictor_sizes = ssd_300(image_size=(img_height, img_width, img_channels
 
 adam = Adam(lr=0.001, beta_1=0.9, beta_2=0.999, epsilon=1e-08, decay=5e-04)
 
-ssd_loss = SSDLoss(neg_pos_ratio=3, n_neg_min=0, alpha=1.0)
+ssd_loss = SSDLoss(neg_pos_ratio=10, n_neg_min=0, alpha=1.0)
 
 model.compile(optimizer=adam, loss=ssd_loss.compute_loss)
 
 # TODO: Set the path to the `.h5` file of the model to be loaded.
-model_path = 'ssd300.h5'
-
-# We need to create an SSDLoss object in order to pass that to the model loader.
-ssd_loss = SSDLoss(neg_pos_ratio=3, n_neg_min=0, alpha=1.0)
-
-K.clear_session() # Clear previous models from memory.
-
-model = load_model(model_path, custom_objects={'AnchorBoxes': AnchorBoxes,
-                                               'L2Normalization': L2Normalization,
-                                               'compute_loss': ssd_loss.compute_loss})
+# model_path = 'ssd300.h5'
+#
+# # We need to create an SSDLoss object in order to pass that to the model loader.
+# ssd_loss = SSDLoss(neg_pos_ratio=3, n_neg_min=0, alpha=1.0)
+#
+# K.clear_session() # Clear previous models from memory.
+#
+# model = load_model(model_path, custom_objects={'AnchorBoxes': AnchorBoxes,
+#                                                'L2Normalization': L2Normalization,
+#                                                'compute_loss': ssd_loss.compute_loss})
 
 # 1: Instantiate to `BatchGenerator` objects: One for training, one for validation.
 
@@ -83,50 +90,32 @@ val_dataset = BatchGenerator(box_output_format=['class_id', 'xmin', 'xmax', 'ymi
 # TODO: Set the paths to the datasets here.
 
 # The directories that contain the images.
-VOC_2007_images_path      = 'datasets/VOCdevkit/VOC2007/JPEGImages/'
-VOC_2007_test_images_path = 'datasets/VOCdevkit/VOC2007_Test/JPEGImages/'
-VOC_2012_images_path      = 'datasets/VOCdevkit/VOC2012/JPEGImages/'
+road_images_path = 'datasets/LaneMarkings/1'
 
 # The directories that contain the annotations.
-VOC_2007_annotations_path      = 'datasets/VOCdevkit/VOC2007/Annotations/'
-VOC_2007_test_annotations_path = 'datasets/VOCdevkit/VOC2007_Test/Annotations/'
-VOC_2012_annotations_path      = 'datasets/VOCdevkit/VOC2012/Annotations/'
+road_annotations_path = 'datasets/LaneMarkings/11'
 
 # The paths to the image sets.
-VOC_2007_train_image_set_path    = 'datasets/VOCdevkit/VOC2007/ImageSets/Main/train.txt'
-VOC_2012_train_image_set_path    = 'datasets/VOCdevkit/VOC2012/ImageSets/Main/train.txt'
-VOC_2007_val_image_set_path      = 'datasets/VOCdevkit/VOC2007/ImageSets/Main/val.txt'
-VOC_2012_val_image_set_path      = 'datasets/VOCdevkit/VOC2012/ImageSets/Main/val.txt'
-VOC_2007_trainval_image_set_path = 'datasets/VOCdevkit/VOC2007/ImageSets/Main/trainval.txt'
-VOC_2012_trainval_image_set_path = 'datasets/VOCdevkit/VOC2012/ImageSets/Main/trainval.txt'
-VOC_2007_test_image_set_path     = 'datasets/VOCdevkit/VOC2007_Test/ImageSets/Main/test.txt'
+road_train_image_set_path = 'datasets/LaneMarkings/Main/train.txt'
+road_val_image_set_path = 'datasets/LaneMarkings/Main/val.txt'
+road_test_image_set_path = 'datasets/LaneMarkings/Main/test.txt'
 
 # The XML parser needs to now what object class names to look for and in which order to map them to integers.
 classes = ['background',
-           'aeroplane', 'bicycle', 'bird', 'boat',
-           'bottle', 'bus', 'car', 'cat',
-           'chair', 'cow', 'diningtable', 'dog',
-           'horse', 'motorbike', 'person', 'pottedplant',
-           'sheep', 'sofa', 'train', 'tvmonitor']
+           'lane marking']
 
-train_dataset.parse_xml(images_paths=[VOC_2007_images_path,
-                                      VOC_2007_test_images_path,
-                                      VOC_2012_images_path],
-                        annotations_paths=[VOC_2007_annotations_path,
-                                           VOC_2007_test_annotations_path,
-                                           VOC_2012_annotations_path],
-                        image_set_paths=[VOC_2007_trainval_image_set_path,
-                                         VOC_2007_test_image_set_path,
-                                         VOC_2012_train_image_set_path],
+train_dataset.parse_xml(images_paths=[road_images_path],
+                        annotations_paths=[road_annotations_path],
+                        image_set_paths=[road_train_image_set_path],
                         classes=classes,
                         include_classes='all',
                         exclude_truncated=False,
                         exclude_difficult=False,
                         ret=False)
 
-val_dataset.parse_xml(images_paths=[VOC_2012_images_path],
-                      annotations_paths=[VOC_2012_annotations_path],
-                      image_set_paths=[VOC_2012_val_image_set_path],
+val_dataset.parse_xml(images_paths=[road_images_path],
+                      annotations_paths=[road_annotations_path],
+                      image_set_paths=[road_val_image_set_path],
                       classes=classes,
                       include_classes='all',
                       exclude_truncated=False,
@@ -211,11 +200,11 @@ n_val_samples   = val_dataset.get_n_samples()
 
 # Define a learning rate schedule.
 def lr_schedule(epoch):
-    if epoch <= 100: return 0.0001
+    if epoch <= 100: return 0.001
     else: return 0.0001
 
 # TODO: Set the number of epochs to train for.
-epochs = 10
+epochs = 50
 
 history = model.fit_generator(generator = train_generator,
                               steps_per_epoch = ceil(n_train_samples/batch_size),
@@ -229,7 +218,7 @@ history = model.fit_generator(generator = train_generator,
                                                            period=1),
                                            LearningRateScheduler(lr_schedule),
                                            EarlyStopping(monitor='val_loss',
-                                                         min_delta=0.001,
+                                                         min_delta=0.0005,
                                                          patience=2)],
                               validation_data = val_generator,
                               validation_steps = ceil(n_val_samples/batch_size))

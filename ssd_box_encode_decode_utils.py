@@ -388,6 +388,21 @@ def decode_y2(y_pred,
     y_pred_converted[:,:,0] = np.argmax(y_pred[:,:,:-12], axis=-1) # The indices of the highest confidence values in the one-hot class vectors are the class ID
     y_pred_converted[:,:,1] = np.amax(y_pred[:,:,:-12], axis=-1) # Store the confidence values themselves, too
 
+    # # ......
+    # road_ind = y_pred[:, :, 1] > .25
+    # target_ind = np.concatenate([np.expand_dims(road_ind, -1)] * 6, axis=-1)
+    #
+    # arg_ind = np.zeros_like(target_ind)
+    # arg_ind[..., 0] = True
+    # arg_ind &= target_ind
+    # y_pred_converted[arg_ind] = 1
+    #
+    # a_ind = np.zeros_like(target_ind)
+    # a_ind[..., 1] = True
+    # a_ind &= target_ind
+    # y_pred_converted[a_ind] = y_pred[road_ind][:, 1]
+
+
     # 2: Convert the box coordinates from the predicted anchor box offsets to predicted absolute coordinates
     if input_coords == 'centroids':
         y_pred_converted[:,:,[4,5]] = np.exp(y_pred_converted[:,:,[4,5]] * y_pred[:,:,[-2,-1]]) # exp(ln(w(pred)/w(anchor)) / w_variance * w_variance) == w(pred) / w(anchor), exp(ln(h(pred)/h(anchor)) / h_variance * h_variance) == h(pred) / h(anchor)

@@ -4,6 +4,8 @@ from keras import backend as K
 from keras.models import load_model
 from math import ceil
 import numpy as np
+import csv
+
 from matplotlib import pyplot as plt
 from keras_ssd300 import ssd_300
 from keras_ssd_loss import SSDLoss
@@ -12,30 +14,33 @@ from keras_layer_L2Normalization import L2Normalization
 from ssd_box_encode_decode_utils import SSDBoxEncoder, decode_y, decode_y2
 from ssd_batch_generator import BatchGenerator
 
-img_height = 300 # Height of the input images
-img_width = 300 # Width of the input images
-img_channels = 3 # Number of color channels of the input images
-n_classes = 2 # Number of classes including the background class, e.g. 21 for the Pascal VOC datasets
-scales = [0.1, 0.2, 0.37, 0.54, 0.71, 0.88, 1.05] # The anchor box scaling factors used in the original SSD300 for the Pascal VOC datasets, the factors for the MS COCO dataset are smaller, namely [0.07, 0.15, 0.33, 0.51, 0.69, 0.87, 1.05]
+img_height = 300  # Height of the input images
+img_width = 300  # Width of the input images
+img_channels = 3  # Number of color channels of the input images
+n_classes = 2  # Number of classes including the background class, e.g. 21 for the Pascal VOC datasets
+scales = [0.1, 0.2, 0.37, 0.54, 0.71, 0.88,
+          1.05]  # The anchor box scaling factors used in the original SSD300 for the Pascal VOC datasets, the factors for the MS COCO dataset are smaller, namely [0.07, 0.15, 0.33, 0.51, 0.69, 0.87, 1.05]
 aspect_ratios = [[0.5, 1.0, 2.0],
-                 [1.0/3.0, 0.5, 1.0, 2.0, 3.0],
-                 [1.0/3.0, 0.5, 1.0, 2.0, 3.0],
-                 [1.0/3.0, 0.5, 1.0, 2.0, 3.0],
+                 [1.0 / 3.0, 0.5, 1.0, 2.0, 3.0],
+                 [1.0 / 3.0, 0.5, 1.0, 2.0, 3.0],
+                 [1.0 / 3.0, 0.5, 1.0, 2.0, 3.0],
                  [0.5, 1.0, 2.0],
-                 [0.5, 1.0, 2.0]] # The anchor box aspect ratios used in the original SSD300
+                 [0.5, 1.0, 2.0]]  # The anchor box aspect ratios used in the original SSD300
 two_boxes_for_ar1 = True
-limit_boxes = False # Whether or not you want to limit the anchor boxes to lie entirely within the image boundaries
-variances = [0.1, 0.1, 0.2, 0.2] # The variances by which the encoded target coordinates are scaled as in the original implementation
-coords = 'centroids' # Whether the box coordinates to be used as targets for the model should be in the 'centroids' or 'minmax' format, see documentation
+limit_boxes = False  # Whether or not you want to limit the anchor boxes to lie entirely within the image boundaries
+variances = [0.1, 0.1, 0.2,
+             0.2]  # The variances by which the encoded target coordinates are scaled as in the original implementation
+coords = 'centroids'  # Whether the box coordinates to be used as targets for the model should be in the 'centroids' or 'minmax' format, see documentation
 normalize_coords = True
 
 # 1: Build the Keras model
 
-K.clear_session() # Clear previous models from memory.
+K.clear_session()  # Clear previous models from memory.
 
 model, predictor_sizes = ssd_300(image_size=(img_height, img_width, img_channels),
                                  n_classes=n_classes,
-                                 min_scale=None, # You could pass a min scale and max scale instead of the `scales` list, but we're not doing that here
+                                 min_scale=None,
+                                 # You could pass a min scale and max scale instead of the `scales` list, but we're not doing that here
                                  max_scale=None,
                                  scales=scales,
                                  aspect_ratios_global=None,
@@ -67,7 +72,7 @@ model_path = 'ssd300.h5'
 # We need to create an SSDLoss object in order to pass that to the model loader.
 ssd_loss = SSDLoss(neg_pos_ratio=3, n_neg_min=0, alpha=1.0)
 
-K.clear_session() # Clear previous models from memory.
+K.clear_session()  # Clear previous models from memory.
 
 model = load_model(model_path, custom_objects={'AnchorBoxes': AnchorBoxes,
                                                'L2Normalization': L2Normalization,
@@ -75,7 +80,6 @@ model = load_model(model_path, custom_objects={'AnchorBoxes': AnchorBoxes,
 
 # 1: Instantiate to `BatchGenerator` objects: One for training, one for validation.
 
-train_dataset = BatchGenerator(box_output_format=['class_id', 'xmin', 'xmax', 'ymin', 'ymax'])
 val_dataset = BatchGenerator(box_output_format=['class_id', 'xmin', 'xmax', 'ymin', 'ymax'])
 
 # 2: Parse the image and label lists for the training and validation datasets. This can take a while.
@@ -86,13 +90,11 @@ val_dataset = BatchGenerator(box_output_format=['class_id', 'xmin', 'xmax', 'ymi
 
 road_test_images_path = 'datasets/LaneMarkings/1/'
 
-
 # The directories that contain the annotations.
 road_test_annotations_path = 'datasets/LaneMarkings/11/'
 
 # The paths to the image sets.
 road_test_image_set_path = 'datasets/LaneMarkings/Main/test.txt'
-
 
 # The XML parser needs to now what object class names to look for and in which order to map them to integers.
 classes = ['background',
@@ -151,14 +153,14 @@ ssd_box_encoder = SSDBoxEncoder(img_height=img_height,
 
 # 4: Set the batch size.
 
-batch_size = 32 # Change the batch size if you like, or if you run into memory issues with your GPU.
+batch_size = 32  # Change the batch size if you like, or if you run into memory issues with your GPU.
 
 ### Make predictions
 
 # 1: Set the generator
 
-predict_generator = val_dataset.generate(batch_size=1,
-                                         shuffle=True,
+predict_generator = val_dataset.generate(batch_size=batch_size,
+                                         shuffle=False,
                                          train=False,
                                          equalize=False,
                                          brightness=False,
@@ -173,22 +175,25 @@ predict_generator = val_dataset.generate(batch_size=1,
                                          gray=False,
                                          limit_boxes=True,
                                          include_thresh=0.4,
-                                         diagnostics=False)
+                                         diagnostics=False,
+                                         one_time=True)
 # 2: Generate samples
 
 
-while not len(input('Next:')):
+true_csv_file = open('true.csv', 'w', newline="")
+pred_csv_file = open('pred.csv', 'w', newline="")
 
-    X, y_true, filenames = next(predict_generator)
+true_writer = csv.writer(true_csv_file)
+pred_writer = csv.writer(pred_csv_file)
 
-    i = 0 # Which batch item to look at
+true_writer.writerow(['id', 'x1', 'y1', 'x2', 'y2', 'score'])
+pred_writer.writerow(['id', 'x1', 'y1', 'x2', 'y2', 'score'])
 
-    print("Image:", filenames[i])
-    print()
-    print("Ground truth boxes:\n")
-    print(y_true[i])
+for i, (X, y_true, filenames) in enumerate(predict_generator):
+
     # 3: Make a prediction
 
+    # model.predict_generator()
     y_pred = model.predict(X)
     # 4: Decode the raw prediction `y_pred`
 
@@ -201,27 +206,16 @@ while not len(input('Next:')):
                                img_height=img_height,
                                img_width=img_width)
 
-    np.set_printoptions(precision=2, suppress=True, linewidth=90)
-    print("Predicted boxes:\n")
-    print(y_pred_decoded[i])
-    # 5: Draw the predicted boxes onto the image
+    for j, (filename, y_true_item, y_pred_item) in enumerate(zip(filenames, y_true, y_pred_decoded)):
+        id = i * batch_size + j
+        for box in y_true_item:
+            y_true_item_data = [id, box[1], box[3], box[2] - box[1], box[4] - box[3], 1]
+            true_writer.writerow(y_true_item_data)
 
-    plt.figure(figsize=(20,12))
-    plt.imshow(X[i])
+        for box in y_pred_item:
+            y_pred_item_data = [id, box[2], box[4], box[3] - box[2], box[5] - box[4], box[1]]
+            pred_writer.writerow(y_pred_item_data)
 
-    current_axis = plt.gca()
-
-    for box in y_true[i]:
-        label = '{}'.format(classes[int(box[0])])
-        current_axis.add_patch(plt.Rectangle((box[1], box[3]), box[2]-box[1], box[4]-box[3], color='green', fill=False, linewidth=2))
-        current_axis.text(box[1], box[3], label, size='x-large', color='white', bbox={'facecolor':'green', 'alpha':1.0})
-
-    for box in y_pred_decoded[i]:
-        # label = '{}: {:.2f}'.format(classes[int(box[0])], box[1])
-        # label = '{:.2f}'.format(box[1])
-        label = '{}: {:.2f}'.format('lanemarking', box[1])
-        current_axis.add_patch(plt.Rectangle((box[2], box[4]), box[3]-box[2], box[5]-box[4], color='blue', fill=False, linewidth=2))
-        current_axis.text(box[2], box[4], label, size='x-large', color='white', bbox={'facecolor':'blue', 'alpha':1.0})
-
-    plt.show()
-
+true_csv_file.close()
+pred_csv_file.close()
+print('Done.')

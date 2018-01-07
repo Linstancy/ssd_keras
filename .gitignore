@@ -99,3 +99,5 @@ local
 *.h5
 .idea
 /datasets/
+
+*.csv
